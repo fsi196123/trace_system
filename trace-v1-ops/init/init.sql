@@ -2,42 +2,53 @@
 -- 创建扩展
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- 创建产品表
+CREATE TABLE IF NOT EXISTS product (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    type_code VARCHAR(20) NOT NULL,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 创建批次表
 CREATE TABLE IF NOT EXISTS batch (
     id SERIAL PRIMARY KEY,
+    product_id INTEGER,
     batch_no VARCHAR(50) UNIQUE NOT NULL,
+    production_date VARCHAR(20),
+    count INTEGER DEFAULT 0,
     product_name VARCHAR(100),
-    total_count INTEGER DEFAULT 0,
-    status VARCHAR(20) DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    status VARCHAR(20) DEFAULT 'processing',
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES product(id) ON DELETE CASCADE
 );
 
 -- 创建二维码表
 CREATE TABLE IF NOT EXISTS trace_code (
     id SERIAL PRIMARY KEY,
-    code_id VARCHAR(50) UNIQUE NOT NULL,
-    batch_no VARCHAR(50),
-    product_name VARCHAR(100),
-    qr_path VARCHAR(200),
-    signature VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (batch_no) REFERENCES batch(batch_no) ON DELETE CASCADE
+    code_id VARCHAR(64) UNIQUE NOT NULL,
+    product_id INTEGER,
+    batch_id INTEGER,
+    is_used BOOLEAN DEFAULT FALSE,
+    first_scan_time TIMESTAMP,
+    first_scan_ip VARCHAR(50),
+    status VARCHAR(20) DEFAULT 'unused',
+    scan_count INTEGER DEFAULT 0,
+    last_scan_time TIMESTAMP,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES product(id) ON DELETE CASCADE,
+    FOREIGN KEY (batch_id) REFERENCES batch(id) ON DELETE CASCADE
 );
 
 -- 创建扫码记录表
 CREATE TABLE IF NOT EXISTS scan_log (
     id SERIAL PRIMARY KEY,
-    code_id VARCHAR(50) NOT NULL,
+    code_id VARCHAR(50),
     ip VARCHAR(50),
-    city VARCHAR(50),
-    province VARCHAR(50),
-    country VARCHAR(50),
+    user_agent VARCHAR(200),
     scan_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    user_agent TEXT,
-    verify_result VARCHAR(20),
-    risk_level VARCHAR(20),
-    scan_count INTEGER DEFAULT 1
+    is_first BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (code_id) REFERENCES trace_code(code_id) ON DELETE CASCADE
 );
 
 -- 创建批次任务表
@@ -86,7 +97,7 @@ CREATE TABLE IF NOT EXISTS system_rule (
 );
 
 -- 创建索引
-CREATE INDEX IF NOT EXISTS idx_trace_code_batch ON trace_code(batch_no);
+CREATE INDEX IF NOT EXISTS idx_trace_code_batch ON trace_code(batch_id);
 CREATE INDEX IF NOT EXISTS idx_scan_log_code ON scan_log(code_id);
 CREATE INDEX IF NOT EXISTS idx_scan_log_time ON scan_log(scan_time);
 CREATE INDEX IF NOT EXISTS idx_batch_task_status ON batch_task(status);
