@@ -1,10 +1,23 @@
 #!/bin/bash
 
-echo "🚀 启动睿码溯源系统"
+echo "========================================="
+echo "  睿码溯源系统 - 启动服务"
+echo "========================================="
 
-cd /opt/trace-system
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_DIR="$(dirname "$SCRIPT_DIR")"
+cd "$INSTALL_DIR"
 
-docker-compose up -d
+echo "正在启动服务..."
+docker-compose -f install/docker-compose.yml start
 
-echo "✅ 系统已启动"
-echo "访问地址： http://服务器IP"
+echo ""
+echo "等待服务启动..."
+sleep 5
+
+echo ""
+echo "服务状态:"
+docker-compose -f install/docker-compose.yml ps
+
+echo ""
+echo "启动完成!"

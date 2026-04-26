@@ -1,13 +1,41 @@
 #!/bin/bash
 
-echo "=== 系统状态 ==="
-docker ps | grep trace
+echo "========================================="
+echo "  睿码溯源系统 - 服务状态检查"
+echo "========================================="
+echo ""
 
-echo "\n=== 后端健康 ==="
-curl -s http://localhost:8000/ || echo "后端服务可能未启动"
+echo "【容器状态】"
+docker ps --filter "name=trace_" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-echo "\n=== 数据库状态 ==="
-docker exec -t trace_db pg_isready -U trace_user -d trace_db || echo "数据库可能未启动"
+echo ""
+echo "【服务健康检查】"
 
-echo "\n=== Nginx状态 ==="
-docker exec -t trace_nginx nginx -t || echo "Nginx可能未启动"
+# 检查后端
+if curl -s http://localhost:8000/ > /dev/null 2>&1; then
+    echo "✓ 后端服务: 正常 (http://localhost:8000)"
+else
+    echo "✗ 后端服务: 异常"
+fi
+
+# 检查前端
+if curl -s http://localhost/ > /dev/null 2>&1; then
+    echo "✓ 前端服务: 正常 (http://localhost)"
+else
+    echo "✗ 前端服务: 异常"
+fi
+
+# 检查数据库
+if docker exec trace_db pg_isready -U trace_user -d trace_db > /dev/null 2>&1; then
+    echo "✓ 数据库: 正常"
+else
+    echo "✗ 数据库: 异常"
+fi
+
+echo ""
+echo "【资源使用】"
+docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" \
+    $(docker ps --filter "name=trace_" -q)
+
+echo ""
+echo "========================================="

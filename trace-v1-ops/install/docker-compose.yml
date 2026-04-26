@@ -2,12 +2,12 @@ version: "3.8"
 
 services:
   db:
-    image: postgres:14
+    image: postgres:14-alpine
     container_name: trace_db
     restart: always
     environment:
       POSTGRES_USER: trace_user
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_PASSWORD: trace_pass_2024
       POSTGRES_DB: trace_db
     ports:
       - "5432:5432"
@@ -18,10 +18,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - trace-network
 
   backend:
     build:
-      context: ../../
+      context: ./backend
       dockerfile: Dockerfile
     container_name: trace_backend
     restart: always
@@ -31,23 +33,32 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ../../app:/app
-      - ../logs/backend:/app/logs
+      - ./logs/backend:/app/logs
+      - ./static:/app/static
     environment:
-      DATABASE_URL: postgresql://trace_user:123456@db:5432/trace_db
+      DATABASE_URL: postgresql://trace_user:trace_pass_2024@db:5432/trace_db
+      POSTGRES_USER: trace_user
+      POSTGRES_PASSWORD: trace_pass_2024
+      POSTGRES_DB: trace_db
+    networks:
+      - trace-network
 
-  nginx:
-    image: nginx:1.21
-    container_name: trace_nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: trace_frontend
     restart: always
     ports:
       - "80:80"
     depends_on:
       - backend
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ../../frontend/dist:/usr/share/nginx/html
-      - ../logs/nginx:/var/log/nginx
+    networks:
+      - trace-network
+
+networks:
+  trace-network:
+    driver: bridge
 
 volumes:
   pgdata:

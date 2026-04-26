@@ -1,160 +1,386 @@
 # 睿码溯源系统 - 故障排查指南
 
-## 一、常见问题及解决方案
+## 一、服务无法启动
 
-### 1. 服务无法访问
+### 1.1 Docker 服务异常
 
-**问题描述**：浏览器无法访问系统，显示连接失败或超时。
-
-**解决方案**：
-1. **检查网络连接**：确保服务器网络正常，可通过 `ping` 命令测试。
-2. **检查端口开放**：使用 `netstat -tuln` 或 `ss -tuln` 检查 80 端口是否开放。
-3. **检查 Nginx 服务**：执行 `docker ps | grep trace_nginx` 查看 Nginx 容器是否运行。
-4. **检查 Nginx 日志**：查看 `/opt/trace-system/logs/nginx/error.log` 中的错误信息。
-5. **检查后端服务**：执行 `docker ps | grep trace_backend` 查看后端容器是否运行。
-
-### 2. 后端服务异常
-
-**问题描述**：系统可以访问，但功能无法正常使用，可能显示 500 错误。
+**症状**：执行安装脚本时报错 "Docker 未安装"
 
 **解决方案**：
-1. **查看后端日志**：查看 `/opt/trace-system/logs/backend/` 目录下的日志文件。
-2. **检查数据库连接**：执行 `bash status.sh` 查看数据库状态。
-3. **重启后端服务**：执行 `bash restart.sh` 重启整个系统。
-4. **检查数据库**：登录数据库查看表结构和数据是否正常。
 
-### 3. 数据库连接失败
-
-**问题描述**：后端服务无法连接到数据库，显示数据库连接错误。
-
-**解决方案**：
-1. **检查数据库服务**：执行 `docker ps | grep trace_db` 查看数据库容器是否运行。
-2. **检查数据库状态**：执行 `docker exec -t trace_db pg_isready -U trace_user -d trace_db`。
-3. **检查数据库日志**：执行 `docker logs trace_db` 查看数据库日志。
-4. **重启数据库**：执行 `bash restart.sh` 重启整个系统。
-
-### 4. 二维码生成失败
-
-**问题描述**：批量生成二维码时失败，任务状态显示失败。
-
-**解决方案**：
-1. **查看后端日志**：查看 `/opt/trace-system/logs/backend/` 目录下的日志文件。
-2. **检查存储空间**：使用 `df -h` 检查服务器磁盘空间是否充足。
-3. **检查权限**：确保后端容器有写入文件的权限。
-4. **重试任务**：在任务中心页面重试失败的任务。
-
-### 5. 导出功能失败
-
-**问题描述**：导出 Excel 或 ZIP 文件时失败，任务状态显示失败。
-
-**解决方案**：
-1. **查看后端日志**：查看 `/opt/trace-system/logs/backend/` 目录下的日志文件。
-2. **检查存储空间**：使用 `df -h` 检查服务器磁盘空间是否充足。
-3. **检查权限**：确保后端容器有写入文件的权限。
-4. **重试任务**：在任务中心页面重试失败的任务。
-
-## 二、日志查看
-
-### 1. 后端日志
+#### CentOS/RHEL
 ```bash
-# 查看后端容器日志
+# 检查Docker状态
+systemctl status docker
+
+# 启动Docker服务
+sudo systemctl start docker
+
+# 设置Docker开机自启
+sudo systemctl enable docker
+```
+
+#### Ubuntu/Debian
+```bash
+# 检查Docker状态
+systemctl status docker
+
+# 启动Docker服务
+sudo systemctl start docker
+
+# 设置Docker开机自启
+sudo systemctl enable docker
+```
+
+### 1.2 端口被占用
+
+**症状**：容器启动失败，提示端口已被占用
+
+**解决方案**：
+```bash
+# 查看端口占用情况
+netstat -tlnp | grep 80
+netstat -tlnp | grep 8000
+netstat -tlnp | grep 5432
+
+# 释放端口（停止占用该端口的服务）
+sudo systemctl stop nginx  # 如果是Nginx占用
+sudo fuser -k 80/tcp       # 强制释放80端口
+
+# 或修改docker-compose.yml中的端口映射
+```
+
+### 1.3 磁盘空间不足
+
+**症状**：镜像构建或容器启动失败
+
+**解决方案**：
+```bash
+# 查看磁盘空间
+df -h
+
+# 清理Docker资源
+docker system prune -a
+
+# 清理旧镜像
+docker image prune -a
+
+# 清理未使用的容器
+docker container prune
+```
+
+## 二、数据库问题
+
+### 2.1 数据库连接失败
+
+**症状**：后端服务日志显示 "connection refused"
+
+**解决方案**：
+```bash
+# 检查数据库容器状态
+docker ps | grep trace_db
+
+# 查看数据库日志
+docker logs trace_db
+
+# 等待数据库就绪后重试
+sleep 30
+
+# 手动测试连接
+docker exec -it trace_db psql -U trace_user -d trace_db -c "SELECT 1"
+```
+
+### 2.2 数据库初始化失败
+
+**症状**：表不存在或数据异常
+
+**解决方案**：
+```bash
+# 重新初始化数据库
+docker exec -i trace_db psql -U trace_user -d trace_db < init/init.sql
+
+# 如需重新创建数据库
+docker-compose -f install/docker-compose.yml down -v
+docker-compose -f install/docker-compose.yml up -d
+```
+
+### 2.3 数据丢失
+
+**症状**：重启后数据丢失
+
+**原因**：未使用持久化存储
+
+**解决方案**：
+```bash
+# 使用Docker卷持久化（默认已配置）
+# 检查卷是否存在
+docker volume ls | grep pgdata
+
+# 如需重新配置持久化
+docker-compose -f install/docker-compose.yml down
+docker volume create trace-v1-ops_pgdata
+docker-compose -f install/docker-compose.yml up -d
+```
+
+## 三、后端服务问题
+
+### 3.1 后端启动失败
+
+**症状**：trace_backend 容器状态为 "Exited"
+
+**解决方案**：
+```bash
+# 查看错误日志
 docker logs trace_backend
 
-# 查看后端应用日志
-ls -la /opt/trace-system/logs/backend/
-tail -f /opt/trace-system/logs/backend/app.log
+# 常见错误及解决：
+
+# 1. 缺少依赖
+# 重新构建镜像
+docker-compose -f install/docker-compose.yml build backend
+docker-compose -f install/docker-compose.yml up -d
+
+# 2. 端口冲突
+# 修改 docker-compose.yml 中的端口映射
+
+# 3. 权限问题
+docker exec trace_backend chown -R app:app /app
 ```
 
-### 2. Nginx 日志
+### 3.2 API 请求超时
+
+**症状**：前端请求后端API超时
+
+**解决方案**：
 ```bash
-# 查看 Nginx 容器日志
+# 检查后端负载
+docker stats trace_backend --no-stream
+
+# 增加超时时间（修改nginx.conf）
+proxy_connect_timeout 60s;
+proxy_read_timeout 120s;
+
+# 重启Nginx
+docker-compose -f install/docker-compose.yml restart nginx
+```
+
+### 3.3 二维码生成失败
+
+**症状**：生成二维码时出错
+
+**解决方案**：
+```bash
+# 检查存储目录权限
+docker exec trace_backend ls -la /app/static/qrcode
+
+# 修复权限
+docker exec trace_backend mkdir -p /app/static/qrcode /app/static/export
+docker exec trace_backend chmod -R 777 /app/static
+
+# 检查磁盘空间
+df -h /app
+```
+
+## 四、前端服务问题
+
+### 4.1 前端页面无法访问
+
+**症状**：访问 http://localhost 显示 502 或 404
+
+**解决方案**：
+```bash
+# 检查Nginx容器状态
+docker ps | grep trace_nginx
+
+# 查看Nginx日志
 docker logs trace_nginx
 
-# 查看 Nginx 访问日志
-tail -f /opt/trace-system/logs/nginx/access.log
+# 检查前端构建文件是否存在
+docker exec trace_nginx ls -la /usr/share/nginx/html
 
-# 查看 Nginx 错误日志
-tail -f /opt/trace-system/logs/nginx/error.log
+# 重新构建前端
+docker-compose -f install/docker-compose.yml build frontend
+docker-compose -f install/docker-compose.yml up -d
 ```
 
-### 3. 数据库日志
+### 4.2 前端无法访问后端API
+
+**症状**：前端显示 "网络错误" 或 "API请求失败"
+
+**解决方案**：
 ```bash
-# 查看数据库容器日志
-docker logs trace_db
+# 检查代理配置
+docker exec trace_nginx cat /etc/nginx/conf.d/default.conf
+
+# 测试API转发
+curl -I http://localhost/api/
+
+# 重启Nginx
+docker-compose -f install/docker-compose.yml restart nginx
 ```
 
-## 三、性能问题排查
+## 五、性能问题
 
-### 1. 系统响应缓慢
-
-**解决方案**：
-1. **检查服务器资源**：使用 `top` 或 `htop` 查看 CPU 和内存使用情况。
-2. **检查 Docker 资源**：使用 `docker stats` 查看容器资源使用情况。
-3. **检查数据库性能**：登录数据库执行 `EXPLAIN ANALYZE` 分析慢查询。
-4. **优化配置**：根据实际业务量调整服务器配置和 Docker 容器资源限制。
-
-### 2. 数据库性能问题
+### 5.1 服务响应缓慢
 
 **解决方案**：
-1. **查看数据库连接数**：登录数据库执行 `SELECT count(*) FROM pg_stat_activity;`。
-2. **查看慢查询**：登录数据库执行 `SELECT * FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 10;`。
-3. **优化索引**：检查并添加必要的索引。
-4. **清理数据**：定期清理过期数据，保持数据库性能。
+```bash
+# 检查资源使用
+docker stats
 
-## 四、安全问题排查
+# 增加资源限制（修改docker-compose.yml）
+deploy:
+  resources:
+    limits:
+      cpus: '2'
+      memory: 2G
 
-### 1. 系统被攻击
-
-**解决方案**：
-1. **查看访问日志**：检查 Nginx 访问日志，识别异常访问。
-2. **查看扫描记录**：检查系统中的扫码记录，识别异常扫描。
-3. **加强防火墙**：配置防火墙，限制外部访问。
-4. **更新密码**：定期更新数据库密码和系统密码。
-
-### 2. 数据泄露
-
-**解决方案**：
-1. **检查日志**：查看系统日志，识别异常操作。
-2. **备份数据**：立即执行备份，确保数据安全。
-3. **审计系统**：检查系统中的操作记录，识别可疑操作。
-4. **加强权限**：限制系统用户权限，避免权限过大。
-
-## 五、应急响应
-
-### 1. 系统崩溃
-
-**应急措施**：
-1. **重启系统**：执行 `bash restart.sh` 重启整个系统。
-2. **恢复数据**：如果数据丢失，使用最近的备份恢复数据。
-3. **排查原因**：查看日志，找出崩溃原因。
-4. **预防措施**：根据崩溃原因，采取相应的预防措施。
-
-### 2. 数据库损坏
-
-**应急措施**：
-1. **停止服务**：执行 `bash stop.sh` 停止系统服务。
-2. **恢复数据**：使用最近的备份恢复数据库。
-3. **检查数据库**：登录数据库检查数据库状态。
-4. **启动服务**：执行 `bash start.sh` 启动系统服务。
-
-## 六、联系支持
-
-如果遇到无法解决的问题，请联系技术支持：
-
-- **技术支持邮箱**：support@ruitrace.com
-- **技术支持电话**：400-123-4567
-- **工作时间**：周一至周五 9:00-18:00
-
-## 七、故障排查流程图
-
-```
-问题发生 → 查看日志 → 定位问题 → 执行解决方案 → 验证修复 → 记录问题
+# 优化数据库查询
+docker exec trace_db psql -U trace_user -d trace_db -c "SELECT * FROM pg_stat_activity;"
 ```
 
-## 八、最佳实践
+### 5.2 内存不足 (OOM)
 
-1. **定期备份**：每天执行一次数据库备份。
-2. **监控系统**：定期查看系统状态和日志。
-3. **更新系统**：定期更新 Docker 镜像和系统补丁。
-4. **安全审计**：定期进行安全审计，识别潜在风险。
-5. **文档更新**：及时更新故障排查文档，记录新的问题和解决方案。
+**解决方案**：
+
+#### CentOS/RHEL
+```bash
+# 增加Swap
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+
+# 永久启用swap
+echo '/swapfile swap swap defaults 0 0' | sudo tee -a /etc/fstab
+```
+
+#### Ubuntu/Debian
+```bash
+# 增加Swap
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+
+# 永久启用swap
+echo '/swapfile swap swap defaults 0 0' | sudo tee -a /etc/fstab
+```
+
+```bash
+# 或限制Docker内存使用
+docker-compose -f install/docker-compose.yml up -d --memory="2g"
+```
+
+## 六、数据备份与恢复
+
+### 6.1 备份失败
+
+**症状**：执行 backup.sh 失败
+
+**解决方案**：
+```bash
+# 检查备份目录权限
+ls -la backup/
+
+# 手动创建备份目录
+mkdir -p backup
+chmod 777 backup
+
+# 手动执行备份
+docker exec trace_db pg_dump -U trace_user -d trace_db > backup/db_backup_$(date +%Y%m%d).sql
+```
+
+### 6.2 恢复失败
+
+**症状**：恢复数据后服务异常
+
+**解决方案**：
+```bash
+# 确保备份文件完整
+ls -lh backup/db_backup_*.sql
+
+# 检查备份文件内容
+head -20 backup/db_backup_20240419.sql
+
+# 恢复前先清空现有数据
+docker exec -i trace_db psql -U trace_user -d trace_db < backup/db_backup_20240419.sql
+```
+
+## 七、紧急恢复流程
+
+### 7.1 系统完全崩溃
+
+1. **备份当前状态**
+   ```bash
+   docker ps > containers_status.txt
+   docker images > images_list.txt
+   ```
+
+2. **清理环境**
+   ```bash
+   docker-compose -f install/docker-compose.yml down -v
+   docker system prune -a
+   ```
+
+3. **重新安装**
+   ```bash
+   ./scripts/install.sh
+   ```
+
+4. **恢复数据**
+   ```bash
+   ./scripts/restore.sh backup/db_backup_latest.sql
+   ```
+
+### 7.2 仅数据库问题
+
+1. **备份当前数据库**
+   ```bash
+   docker exec trace_db pg_dump -U trace_user -d trace_db > emergency_backup.sql
+   ```
+
+2. **重建数据库容器**
+   ```bash
+   docker-compose -f install/docker-compose.yml stop db
+   docker volume rm trace-v1-ops_pgdata
+   docker-compose -f install/docker-compose.yml up -d
+   ```
+
+3. **恢复数据**
+   ```bash
+   sleep 10
+   docker exec -i trace_db psql -U trace_user -d trace_db < emergency_backup.sql
+   ```
+
+## 八、日志收集
+
+### 8.1 收集诊断信息
+
+```bash
+# 创建诊断目录
+mkdir -p diagnostics
+cd diagnostics
+
+# 收集系统信息
+uname -a > system_info.txt
+df -h > disk_info.txt
+docker ps > containers.txt
+docker stats --no-stream > stats.txt
+
+# 收集日志
+docker logs trace_backend > backend_logs.txt 2>&1
+docker logs trace_nginx > nginx_logs.txt 2>&1
+docker logs trace_db > db_logs.txt 2>&1
+
+# 打包
+tar -czf diagnostics_$(date +%Y%m%d).tar.gz *.txt
+```
+
+### 8.2 联系技术支持
+
+收集完诊断信息后，请联系技术支持并提供：
+- 诊断包：`diagnostics_YYYYMMDD.tar.gz`
+- 问题描述
+- 问题发生时间
+- 已尝试的解决方案

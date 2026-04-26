@@ -1,189 +1,171 @@
-# 睿码溯源系统 - 运维交付包 V1
+# 睿码溯源系统 V1.0.0
 
-## 一、项目概览
+## 产品简介
 
-睿码溯源系统是一款企业级防伪溯源解决方案，基于现代化的技术栈构建，提供二维码生成、批次管理、扫码溯源等核心功能。本运维交付包旨在为运维人员提供标准化的部署和管理流程，确保系统的稳定运行。
+睿码溯源系统（RuiTrace Platform）是一款企业级工业防伪溯源解决方案，为企业提供从产品生产、流通到消费的全流程溯源管理能力。
 
-### 系统特点
-- **企业级架构**：基于 Docker 容器化部署，确保系统的可扩展性和可靠性
-- **任务化管理**：所有耗时操作（如批量生成二维码、导出文件）均采用任务化管理
-- **完整的业务闭环**：创建批次 → 批量生成二维码 → 导出 Excel/ZIP → A4 打印 → 贴标生产 → 扫码溯源
-- **可观测性**：完善的日志系统和状态检查机制
-- **易于维护**：标准化的运维脚本，简化日常管理
+## 核心功能
 
-## 二、目录结构
+- **二维码管理**：批量生成、导出、管理唯一二维码
+- **批次管理**：批次创建、状态跟踪、产品关联
+- **扫码溯源**：扫码记录、地理位置分析、风险预警
+- **任务中心**：统一的异步任务管理（生成任务、导出任务）
+- **数据统计**：多维度数据统计和可视化展示
+
+## 技术架构
+
+- **前端**：Vue 3 + Element Plus + Vite
+- **后端**：FastAPI + Python 3.10
+- **数据库**：PostgreSQL 14
+- **容器化**：Docker + Docker Compose
+- **反向代理**：Nginx
+
+## 目录结构
 
 ```
 trace-v1-ops/
-│
-├── install/                 # 安装包（核心）
-│   ├── docker-compose.yml   # Docker Compose 配置文件
-│   ├── nginx.conf           # Nginx 配置文件
-│   ├── env.example          # 环境变量模板
-│
-├── scripts/                # 运维脚本（关键）
-│   ├── install.sh          # 安装脚本
-│   ├── start.sh            # 启动脚本
-│   ├── stop.sh             # 停止脚本
-│   ├── restart.sh          # 重启脚本
-│   ├── status.sh           # 状态检查脚本
-│   ├── backup.sh           # 备份数据库脚本
-│   ├── restore.sh          # 恢复数据脚本
-│
+├── install/                 # 安装包
+│   ├── docker-compose.yml  # 容器编排配置
+│   ├── backend/            # 后端服务
+│   │   ├── Dockerfile      # 后端构建文件
+│   │   ├── requirements.txt
+│   │   └── app/            # 后端源码
+│   ├── frontend/           # 前端服务
+│   │   ├── Dockerfile      # 前端构建文件
+│   │   ├── nginx.conf      # Nginx配置
+│   │   ├── vite.config.js
+│   │   ├── package.json
+│   │   └── src/            # 前端源码
+│   └── env.example         # 环境变量模板
+├── scripts/                # 运维脚本
+│   ├── install.sh          # 一键安装
+│   ├── start.sh            # 启动服务
+│   ├── stop.sh             # 停止服务
+│   ├── restart.sh          # 重启服务
+│   ├── status.sh           # 状态检查
+│   ├── backup.sh           # 数据库备份
+│   └── restore.sh          # 数据恢复
 ├── init/                   # 初始化数据
-│   ├── init.sql            # 初始化数据库表结构
-│   ├── demo_data.sql       # 演示数据
-│
-├── logs/                   # 日志目录（挂载）
-│   ├── backend/            # 后端服务日志
-│   ├── nginx/              # Nginx 日志
-│
-├── docs/                   # 运维手册
-│   ├── deploy_guide.md     # 部署指南
-│   ├── troubleshooting.md  # 故障排查指南
-│   ├── architecture.md     # 架构说明
-│
-└── README.md               # 运维入口说明
+│   ├── init.sql            # 数据库初始化
+│   └── demo_data.sql       # 演示数据
+├── logs/                   # 日志目录
+├── docs/                   # 运维文档
+└── README.md              # 说明文档
 ```
 
-## 三、快速开始
+## 快速部署
 
-### 1. 服务器准备
-- 安装 Docker 和 Docker Compose
-- 开放端口：80 / 8000 / 5432（可选）
+### 环境要求
 
-### 2. 安装系统
+- Linux 服务器（Ubuntu 20.04+ / CentOS 7+）
+- Docker 20.10+
+- Docker Compose 2.0+
+
+### 安装步骤
+
+1. **上传安装包到服务器**
+   ```bash
+   scp -r trace-v1-ops.tar.gz user@server:/opt/
+   ```
+
+2. **解压安装包**
+   ```bash
+   cd /opt
+   tar -xzf trace-v1-ops.tar.gz
+   cd trace-v1-ops
+   ```
+
+3. **执行安装**
+   ```bash
+   cd scripts
+   bash install.sh
+   ```
+
+4. **访问系统**
+   - 前端界面：http://服务器IP
+   - 后端API：http://服务器IP:8000
+   - API文档：http://服务器IP:8000/docs
+
+### 默认账号
+
+- 用户名：admin
+- 密码：admin123
+
+## 常用运维命令
+
 ```bash
-# 进入脚本目录
-cd trace-v1-ops/scripts
+# 查看服务状态
+./scripts/status.sh
 
-# 执行安装脚本
-bash install.sh
+# 查看后端日志
+docker logs -f trace_backend
+
+# 查看前端日志
+docker logs -f trace_frontend
+
+# 重启服务
+./scripts/restart.sh
+
+# 停止服务
+./scripts/stop.sh
+
+# 启动服务
+./scripts/start.sh
+
+# 备份数据库
+./scripts/backup.sh
+
+# 恢复数据库
+./scripts/restore.sh backup/db_backup_20240419.sql
 ```
 
-### 3. 访问系统
-安装完成后，在浏览器中访问：
-```
-http://服务器IP
-```
+## 端口说明
 
-## 四、日常操作
+| 端口 | 服务 | 说明 |
+|------|------|------|
+| 80   | Nginx/前端 | Web服务端口 |
+| 8000 | FastAPI/后端 | API服务端口 |
+| 5432 | PostgreSQL | 数据库端口（可选开放）|
 
-### 1. 查看系统状态
-```bash
-bash status.sh
-```
+## 目录说明
 
-### 2. 启动系统
-```bash
-bash start.sh
-```
+- `static/qrcode/` - 二维码图片存储
+- `static/export/` - 导出文件存储
+- `logs/backend/` - 后端日志
+- `logs/nginx/` - Nginx日志
+- `backup/` - 数据库备份
 
-### 3. 停止系统
-```bash
-bash stop.sh
-```
+## 故障排查
 
-### 4. 重启系统
-```bash
-bash restart.sh
-```
+### 服务无法启动
 
-### 5. 备份数据库
-```bash
-bash backup.sh
-```
+1. 检查 Docker 服务状态：`systemctl status docker`
+2. 检查端口占用：`netstat -tlnp | grep 80`
+3. 查看容器日志：`docker logs trace_backend`
 
-### 6. 恢复数据
-```bash
-bash restore.sh <备份文件路径>
-```
+### 数据库连接失败
 
-## 五、技术栈
+1. 检查数据库容器：`docker ps | grep trace_db`
+2. 等待数据库就绪：`docker logs trace_db`
+3. 手动初始化数据库：
+   ```bash
+   docker exec -i trace_db psql -U trace_user -d trace_db < init/init.sql
+   ```
 
-### 前端
-- Vue 3 + Element Plus + Vue Router + Pinia
-- Vite 构建工具
+### 前端无法访问
 
-### 后端
-- FastAPI + Python 3.9+
-- PostgreSQL 14
-- SQLAlchemy ORM
+1. 检查 Nginx 容器：`docker ps | grep trace_nginx`
+2. 查看 Nginx 日志：`docker logs trace_nginx`
+3. 检查代理配置：是否正确转发到后端
 
-### 容器化
-- Docker + Docker Compose
-- Nginx 反向代理
+## 联系方式
 
-## 六、系统架构
+技术支持：support@ruitrace.com
+官方网站：https://www.ruitrace.com
 
-系统采用三层架构：
-1. **前端层**：Vue 3 应用，提供用户界面
-2. **后端层**：FastAPI 服务，处理业务逻辑
-3. **数据层**：PostgreSQL 数据库，存储系统数据
+## 版本历史
 
-## 七、常见问题
-
-### 1. 服务无法访问
-- 检查 80 端口是否开放
-- 检查 Nginx 服务是否运行
-- 检查后端服务是否运行
-
-### 2. 数据库连接失败
-- 检查 PostgreSQL 服务是否运行
-- 检查数据库连接参数是否正确
-
-### 3. 二维码生成失败
-- 检查服务器磁盘空间是否充足
-- 检查后端服务日志
-
-### 4. 导出功能失败
-- 检查服务器磁盘空间是否充足
-- 检查后端服务日志
-
-## 八、监控与维护
-
-### 1. 日志查看
-- 后端日志：`/opt/trace-system/logs/backend/`
-- Nginx 日志：`/opt/trace-system/logs/nginx/`
-
-### 2. 性能监控
-- 使用 `docker stats` 监控容器资源使用情况
-- 使用 `top` 或 `htop` 监控服务器资源使用情况
-
-### 3. 安全加固
-- 配置防火墙，限制外部访问
-- 定期更新系统和依赖包
-- 定期备份数据库
-
-## 九、版本管理
-
-### 版本号格式
-`v<主版本>.<次版本>.<修订版本>`
-
-### 当前版本
-V1.0.0
-
-### 升级说明
-- 升级前请备份数据库
-- 按照部署指南执行升级流程
-
-## 十、技术支持
-
-### 联系信息
-- **技术支持邮箱**：support@ruitrace.com
-- **技术支持电话**：400-123-4567
-- **工作时间**：周一至周五 9:00-18:00
-
-### 支持范围
-- 系统部署和配置
-- 系统故障排查
-- 系统性能优化
-- 系统升级和迁移
-
-## 十一、许可证
-
-© 2026 睿码溯源系统. All rights reserved.
-
-## 十二、免责声明
-
-本系统仅供企业内部使用，请勿用于非法用途。使用本系统产生的一切后果由使用者自行承担。
+- **V1.0.0** (2024-04-25)
+  - 初始版本发布
+  - 支持二维码生成、批次管理、扫码溯源
+  - 企业级部署架构
