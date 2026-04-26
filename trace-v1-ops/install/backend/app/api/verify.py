@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Request, Query
 from fastapi.responses import HTMLResponse, JSONResponse
-from db import SessionLocal
-from models import Product, Batch, TraceCode, ScanLog
-from utils.security import verify_signature
-from redis_client import publish_scan_event
-from ip_geo import ip_to_coords
+from app.db import SessionLocal
+from app.models import Product, Batch, TraceCode, ScanLog
+from app.utils.security import verify_signature
+from app.redis_client import publish_scan_event
+from app.ip_geo import ip_to_coords
 from datetime import datetime
 import asyncio
 

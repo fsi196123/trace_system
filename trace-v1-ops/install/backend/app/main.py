@@ -2,15 +2,15 @@ from fastapi import FastAPI, Depends, Form, Query, WebSocket, WebSocketDisconnec
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from db import engine, SessionLocal
-from models import Base, TraceCode, Product, Batch, ScanLog
-from api.code import router as code_router
-from api.verify import router as verify_router
-from api.admin import router as admin_router
-from websocket_manager import manager
-from redis_client import r
-from risk_analysis import build_spread_graph, analyze_code_risk, get_high_risk_codes
-from ip_geo import ip_to_city, ip_to_province, ip_to_coords, get_heatmap_data
+from app.db import engine, SessionLocal
+from app.models import Base, TraceCode, Product, Batch, ScanLog
+from app.api.code import router as code_router
+from app.api.verify import router as verify_router
+from app.api.admin import router as admin_router
+from app.websocket_manager import manager
+from app.redis_client import r
+from app.risk_analysis import build_spread_graph, analyze_code_risk, get_high_risk_codes
+from app.ip_geo import ip_to_city, ip_to_province, ip_to_coords, get_heatmap_data
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 import pandas as pd

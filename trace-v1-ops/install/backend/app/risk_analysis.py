@@ -1,5 +1,5 @@
-from db import SessionLocal
-from models import ScanLog
+from app.db import SessionLocal
+from app.models import ScanLog
 from datetime import datetime, timedelta
 
 def build_spread_graph(code_id):

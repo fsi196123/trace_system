@@ -1,8 +1,8 @@
 from queue import Queue
 import threading
 import time
-from db import SessionLocal
-from models import BatchTask, TraceCode, Batch, Product
+from app.db import SessionLocal
+from app.models import BatchTask, TraceCode, Batch, Product
 import qrcode
 import hashlib
 import base64
