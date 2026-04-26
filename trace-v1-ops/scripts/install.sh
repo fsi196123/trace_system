@@ -35,7 +35,7 @@ mkdir -p logs/backend logs/nginx static/qrcode static/export
 
 echo ""
 echo "[3/5] 构建并启动容器..."
-docker-compose -f install/docker-compose.yml up -d --build --no-cache
+docker-compose -f install/docker-compose.yml up -d --build
 
 echo ""
 echo "[4/5] 等待数据库就绪..."
